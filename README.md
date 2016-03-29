@@ -1,6 +1,8 @@
 # leisurelink/alpine-haproxy
 
-A minimal alpine base image to run haproxy. Uses s6-overlay for supervision and consul-template for dynamically constructing the haproxy config (auto-reloads).
+A docker image to run haproxy with dynamic config generation using consul-template.
+
+Based on alpine, uses s6-overlay for supervision and consul-template for dynamically constructing the haproxy config (auto-reloads).
 
 ## Tags (Asset Versions)
 
