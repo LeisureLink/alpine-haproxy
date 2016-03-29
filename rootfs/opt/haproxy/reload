@@ -1,0 +1,14 @@
+#!/usr/bin/with-contenv sh
+
+pid_file=${HAPROXY_PID_FILE:-/var/run/haproxy.pid}
+cfg_file=${HAPROXY_CONFIG_FILE:-/etc/haproxy.d/haproxy.cfg}
+
+[ ! -e $cfg_file ] && \
+  printf 'ERROR - Unable to find haproxy config: %s' $cfg_file >&2 && \
+  exit 98
+
+if [ -e $pid_file ] ; then
+  haproxy -f $cfg_file -p $pid_file -sf $(cat $pid_file)
+else
+  haproxy -f $cfg_file -p $pid_file
+fi

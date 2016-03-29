@@ -1,0 +1,62 @@
+#---------------------------------------------------------------------
+# Default config file is placed at /etc/haproxy/haxproxy.cfg
+#
+#   http://haproxy.1wt.eu/download/1.4/doc/configuration.txt
+#
+#---------------------------------------------------------------------
+
+#---------------------------------------------------------------------
+global
+    chroot        /var/lib/haproxy
+    stats socket  /var/run/haproxy.sock mode 660 level admin
+    stats timeout 2m
+    spread-checks 5
+    maxconn       4000
+    user          haproxy
+    group         haproxy
+    daemon
+
+#---------------------------------------------------------------------
+defaults
+    mode                    http
+    option http-server-close
+    option                  redispatch
+    option                  forwardfor
+    retries                 3
+    timeout http-request    10s
+    timeout queue           1m
+    timeout connect         10s
+    timeout client          1m
+    timeout server          1m
+    timeout http-keep-alive 10s
+    timeout check           10s
+
+#---------------------------------------------------------------------
+listen HAProxy-Statistics *:8081
+    mode http
+    stats enable
+    stats uri /stats
+    stats refresh 10s
+    stats show-node
+    stats show-legends
+
+#---------------------------------------------------------------------
+#frontend www-https
+#    bind *:443 ssl crt $HAPROXY_SSL_CERT_PATH
+#    reqadd X-Forwarded-Proto:\ https
+#    default_backend www-backend
+
+
+frontend www-http-clear
+    bind *:80
+    reqadd X-Forwarded-Proto:\ http
+    default_backend {{env "SERVICE_BACKEND_NAME"}}
+
+#---------------------------------------------------------------------
+backend {{env "SERVICE_BACKEND_NAME"}}
+    balance     roundrobin
+#    redirect scheme https if !{ ssl_fc }
+    option httpchk HEAD {{env "SERVICE_BACKEND_HEALTH_ROUTE"}}
+    http-check expect status 200
+    {{with $svcName := env "SERVICE_BACKEND_NAME"}}{{range service $svcName}}
+    server {{.Node}} {{.Address}}:{{.Port}} check inter 8s{{end}}{{end}}
