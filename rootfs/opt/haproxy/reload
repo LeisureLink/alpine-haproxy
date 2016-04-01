@@ -1,15 +1,42 @@
 #!/usr/bin/with-contenv sh
 
-pid_file=${HAPROXY_PID_FILE:-/var/run/haproxy.pid}
-cfg_file=${HAPROXY_CONFIG_FILE:-/etc/haproxy.d/haproxy.cfg}
+set -e
 
-[ ! -e $cfg_file ] && \
-  printf 'ERROR - Unable to find haproxy config: %s' $cfg_file >&2 && \
+pid=${HAPROXY_PID_FILE:-/var/run/haproxy.pid}
+cfg=${HAPROXY_CONFIG_FILE:-/etc/haproxy/haproxy.cfg}
+lck=/tmp/haproxy-reload.lck
+mru=/tmp/haproxy.cfg.sha256
+
+comparator=${1-$(openssl dgst -sha256 $cfg 2>/dev/null | tr '=' ' ' | cut -d' ' -f3)}
+
+[ ! -e $cfg ] && \
+  printf 'ERROR - Unable to find haproxy config: %s' $cfg >&2 && \
   exit 98
 
-source /etc/haproxy.d/haproxy.env
-if [ -e $pid_file ] ; then
-   haproxy -f $cfg_file -p $pid_file -sf $(cat $pid_file)
-else
-  haproxy -f $cfg_file -p $pid_file
-fi
+while true; do
+  if [ ! -e $lck ]; then
+    trap "rm -f $lck; exit" INT TERM EXIT
+
+    [ -f $mru ] || touch $mru
+
+    comparand="$(cat $mru)"
+    if [ "$comparator" != "$comparand" ]; then
+      echo -n "$comparator" > $mru
+
+      if [ -e $pid ] ; then
+        echo "reloading HAProxy"
+        haproxy -f $cfg -p $pid -sf $(cat $pid)
+      else
+        echo "starting HAProxy"
+        haproxy -f $cfg -p $pid
+      fi
+    fi
+
+    rm -f "$lck"
+    trap - INT TERM EXIT
+    exit 0
+  else
+    echo "Waiting for $(cat $lck)"
+  fi
+  sleep 1
+done

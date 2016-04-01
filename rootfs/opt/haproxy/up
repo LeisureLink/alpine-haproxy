@@ -1,0 +1,19 @@
+#!/usr/bin/with-contenv sh
+
+cfg=${HAPROXY_CONFIG_FILE:-/etc/haproxy.d/haproxy.cfg}
+
+comparand="$(openssl dgst -sha256 $cfg 2>/dev/null | tr '=' ' ' | cut -d' ' -f3)"
+
+while true #run indefinitely; s6 will kill when necessary
+do
+  inotifywait -qqt 5 -e modify,close_write,move,create $cfg
+
+  comparator="$(openssl dgst -sha256 $cfg 2>/dev/null | tr '=' ' ' | cut -d' ' -f3)"
+  if [ "$comparator" != "$comparand" ]; then
+    echo "Observed change to $cfg ..."
+    haproxy-reload $comparator
+    comparand="$comparator"
+  fi
+done
+
+

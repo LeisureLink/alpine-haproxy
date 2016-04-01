@@ -32,10 +32,11 @@ defaults
     timeout check           10s
 
 #---------------------------------------------------------------------
-listen HAProxy-Statistics *:8081
+listen HAProxy-Statistics
+    bind *:8081
     mode http
     stats enable
-    stats uri /stats
+    stats uri /
     stats refresh 10s
     stats show-node
     stats show-legends
