@@ -1,0 +1,6 @@
+#!/usr/bin/with-contenv sh
+
+mru=/tmp/haproxy.cfg.sha256
+if [ -e $mru ]; then
+  rm -f $mru
+fi
