@@ -1,8 +1,10 @@
 #!/usr/bin/with-contenv sh
 
+pid=${HAPROXY_PID_FILE:-/var/run/haproxy.pid}
 cfg=${HAPROXY_CONFIG_FILE:-/etc/haproxy.d/haproxy.cfg}
 
 comparand="$(openssl dgst -sha256 $cfg 2>/dev/null | tr '=' ' ' | cut -d' ' -f3)"
+haproxy-reload
 
 while true #run indefinitely; s6 will kill when necessary
 do
@@ -15,5 +17,3 @@ do
     comparand="$comparator"
   fi
 done
-
-
